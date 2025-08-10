@@ -1,10 +1,9 @@
 export interface Vector {
   getDimension(): number
   translate(vector: Vector): void
-  invert(center: Vector, radius: number): Vector
+  invert(center: Vector, radius: number): void
   normalized(): Vector
   length(): number
-  lerp(target: Vector, t: number): void
   distanceTo(vector: Vector): number
   directionTo(vector: Vector): Vector
   x: number
@@ -18,11 +17,6 @@ export class Vector2 implements Vector {
   constructor(x: number, y: number) {
     this.x = x
     this.y = y
-  }
-
-  lerp(target: Vector2, t: number): void {
-    this.x += (target.x - this.x) * t;
-    this.y += (target.y - this.y) * t;
   }
 
   getDimension(): number {
@@ -71,19 +65,15 @@ export class Vector2 implements Vector {
     this.y += vector.y
   }
 
-  invert(center: Vector2, radius: number): Vector2 {
+  invert(center: Vector2, radius: number): void {
     const distance = this.distanceTo(center)
 
-    if (distance === 0) {
-      return Vector2.ZERO()
+    if (distance !== 0) {
+      const scale = (radius * radius) / (distance * distance);
 
+      this.x = center.x + scale * (this.x - center.x)
+      this.y = center.y + scale * (this.y - center.y)
     }
-
-    const scale = (radius * radius) / (distance * distance);
-    return new Vector2(
-      center.x + scale * (this.x - center.x),
-      center.y + scale * (this.y - center.y),
-    )
   }
 
   static ZERO(): Vector2 {

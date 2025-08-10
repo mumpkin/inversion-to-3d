@@ -16,11 +16,11 @@ export class Point {
     } = {},
   ): void {
     const defaultOptions = { scale: 1, color: 'black', radius: 2 }
-    const { scale, color, radius } =  { ...defaultOptions, ...options }
+    const { scale, color, radius } = { ...defaultOptions, ...options }
 
     const startAngle = 0
     const endAngle = Math.PI * 2
-    
+
     ctx.beginPath()
     ctx.fillStyle = color
     ctx.arc(
