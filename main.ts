@@ -1,116 +1,80 @@
+import { create2DSquare, create2DTriangle, Rectangle, Triangle } from './classes/Shapes'
 import { Vector2 } from './classes/Vector'
-import { Point } from './classes/Point'
 
 const canvas = document.querySelector('canvas') as HTMLCanvasElement
-const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+const resolutionScale = 5
+canvas.height = 720 / resolutionScale
+canvas.width = (canvas.height / 9) * 16
 
-canvas.width = 1000
-canvas.height = 1000
-const scale: number = 10
+const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D
+ctx.imageSmoothingEnabled = false
+ctx.imageSmoothingQuality = 'high'
 
-const xInput = document.querySelector('#x-pos') as HTMLInputElement
-xInput.min = '0'
-xInput.max = (canvas.width / scale).toString()
-xInput.value = ((canvas.width / scale) / 2).toString()
+const tri: Triangle = create2DTriangle(20, 20, 100, 30, 40, 100)
 
-const yInput = document.querySelector('#y-pos') as HTMLInputElement
-yInput.min = '0'
-yInput.max = (canvas.height / scale).toString()
-yInput.value = ((canvas.height / scale) / 2).toString()
-
-const radiusInput = document.querySelector('#radius') as HTMLInputElement
-radiusInput.min = '0'
-radiusInput.max = ((canvas.height / scale)).toString()
-
-
-function initPoints(maxX: number, maxY: number): Point[] {
-  const points: Point[] = []
-  for (let y = 0; y <= maxY; y++) {
-    for (let x = 0; x <= maxX; x++) {
-      const vector = new Vector2(x, y)
-      points.push(new Point(vector))
-    }
-  }
-  return points
+function drawTriangleOutline(ctx: CanvasRenderingContext2D, tri: Triangle): void {
+  ctx.beginPath()
+  ctx.strokeStyle = 'black'
+  ctx.moveTo(tri[0].x, tri[0].y)
+  ctx.lineTo(tri[1].x, tri[1].y)
+  ctx.lineTo(tri[2].x, tri[2].y)
+  ctx.closePath()
+  ctx.stroke()
 }
 
-const center: Point = new Point(new Vector2(
-  Number(xInput.value),
-  Number(yInput.value),
-))
-let radiusParameter: number = 20
 
-xInput.addEventListener('input', (event) => {
-  const target = event.target as HTMLInputElement
-  center.position.x = Number(target.value)
-})
+function triA(tri: Triangle): number {
+    const x1 = tri[0].x, y1 = tri[0].y;
+    const x2 = tri[1].x, y2 = tri[1].y;
+    const x3 = tri[2].x, y3 = tri[2].y;
 
-yInput.addEventListener('input', (event) => {
-  const target = event.target as HTMLInputElement
-  center.position.y = Number(target.value)
-})
-
-radiusInput.addEventListener('input', (event) => {
-  const target = event.target as HTMLInputElement
-  radiusParameter = Number(target.value)
-})
-
-function getIndex(x: number, y: number, width: number): number {
-  return y * width + x
+    const aire = Math.abs((x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) / 2);
+    return aire;
 }
 
-function drawSquareFromPoints(ctx: CanvasRenderingContext2D, points: Point[], scale: number) {
-  points.forEach((_, index) => {
-    const width = canvas.width / scale + 1
+function rasterise(ctx: CanvasRenderingContext2D, tri: Triangle, color: string = 'black') {
+  for (let x = 0; x < canvas.width; x++) {
+    for (let y = 0; y < canvas.height; y++) {
+      const p = new Vector2(x, y)
+      const pt1: Triangle = [p, tri[0], tri[1]]
+      const pt2: Triangle = [p, tri[1], tri[2]]
+      const pt3: Triangle = [p, tri[2], tri[0]]
 
-    const x = index % width
-    const y = Math.floor(index / width)
-
-    if (x < width - 1 && y < width - 1) {
-      const topLeft = points[getIndex(x, y, width)].position
-      const topRight = points[getIndex(x + 1, y, width)].position
-      const bottomRight = points[getIndex(x + 1, y + 1, width)].position
-      const bottomLeft = points[getIndex(x, y + 1, width)].position
-      ctx.beginPath()
-      ctx.fillStyle = index % 2 ? 'cyan' : 'darkgray'
-      if(
-        topLeft.x !== 0  || topLeft.y !== 0 
-        || topRight.x !== 0 || topRight.y !== 0
-        || bottomLeft.x !== 0 || bottomLeft.y !== 0
-        ||bottomRight.x !== 0 || bottomRight.y !== 0
-      ) {
-        ctx.moveTo(topLeft.x * scale, topLeft.y * scale)
-        ctx.lineTo(topRight.x * scale, topRight.y * scale)
-        ctx.lineTo(bottomRight.x * scale, bottomRight.y * scale)
-        ctx.lineTo(bottomLeft.x * scale, bottomLeft.y * scale)
-        ctx.fill()
+      if (triA(pt1) + triA(pt2) + triA(pt3) === triA(tri)) {
+        ctx.beginPath()
+        ctx.fillStyle = color
+        ctx.fillRect(x,y,1,1)
       }
     }
-  })
-}
-  const points: Point[] = initPoints(canvas.width / scale, canvas.height / scale)
-  console.log(points)
-function draw() {
-  const points: Point[] = initPoints(canvas.width / scale, canvas.height / scale)
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  points.forEach((point) => {
-    point.position.invert(center.position, radiusParameter)
-    point.draw(ctx, { scale: scale })
-  })
-  center.draw(ctx, { scale: scale, radius: 4, color: 'red' })
-  ctx.beginPath()
-  ctx.lineWidth = 2
-  ctx.strokeStyle = 'red'
-  ctx.arc(
-    center.position.x * scale,
-    center.position.y * scale,
-    radiusParameter * scale,
-    0,
-    Math.PI * 2
-  )
-  ctx.stroke()
-  drawSquareFromPoints(ctx, points, scale)
-  window.requestAnimationFrame(draw)
+  }
 }
 
-window.requestAnimationFrame(draw)
+const square: Rectangle = create2DSquare(3, 3, 10)
+
+let fps = 0;
+let lastFrameTime = performance.now();
+let frameCount = 0;
+const fpsDisplay = document.querySelector('#frame-count') as HTMLSpanElement
+function fillPixel(ctx: CanvasRenderingContext2D): void {
+  const currentTime = performance.now();
+  frameCount++;
+  if (currentTime - lastFrameTime >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastFrameTime = currentTime;
+
+    fpsDisplay.innerText = fps.toString();
+  }
+
+  // --- DRAW ---
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  square.forEach((tri, index) => rasterise(ctx, tri, index % 2 ? 'blue' : 'red'))
+  rasterise(ctx, tri)
+
+  // -- END DRAW ---
+
+  window.requestAnimationFrame(() => fillPixel(ctx))
+}
+
+window.requestAnimationFrame(() => fillPixel(ctx))
